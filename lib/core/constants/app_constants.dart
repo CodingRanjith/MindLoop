@@ -1,0 +1,12 @@
+class AppConstants {
+  AppConstants._();
+
+  static const String appName = 'MindLoop';
+  static const String hiveRemindersBox = 'reminders';
+  static const String hiveBudgetBox = 'budget';
+  static const String hiveUserBox = 'user';
+  static const String prefsOnboarding = 'onboarding_complete';
+  static const String prefsLoggedIn = 'logged_in';
+  static const String prefsUserEmail = 'user_email';
+  static const String prefsUserName = 'user_name';
+}
