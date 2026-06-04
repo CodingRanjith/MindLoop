@@ -9,6 +9,7 @@ import 'package:mindloop/core/constants/reminder_categories.dart';
 import 'package:mindloop/core/constants/reminder_ringtones.dart';
 import 'package:mindloop/core/di/injection.dart';
 import 'package:mindloop/core/utils/local_file_image.dart';
+import 'package:mindloop/core/utils/reminder_audio_permissions.dart';
 import 'package:mindloop/core/utils/reminder_sound_player.dart';
 import 'package:mindloop/domain/entities/reminder_entity.dart';
 import 'package:mindloop/presentation/blocs/reminder/reminder_bloc.dart';
@@ -20,7 +21,9 @@ import 'package:mindloop/widgets/glow_button.dart';
 enum _SoundSource { builtIn, folder, file }
 
 class ReminderCreateScreen extends StatefulWidget {
-  const ReminderCreateScreen({super.key});
+  const ReminderCreateScreen({super.key, this.initialReminder});
+
+  final ReminderEntity? initialReminder;
 
   @override
   State<ReminderCreateScreen> createState() => _ReminderCreateScreenState();
@@ -44,12 +47,40 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
   final _previewPlayer = AudioPlayer();
   final _dateFmt = DateFormat('EEE, MMM d · h:mm a');
   late final CustomRingtoneService _ringtones;
+  bool get _isEditMode => widget.initialReminder != null;
 
   @override
   void initState() {
     super.initState();
     _ringtones = sl<CustomRingtoneService>();
+    _prefillForEdit();
     _loadFolderTracks();
+  }
+
+  void _prefillForEdit() {
+    final initial = widget.initialReminder;
+    if (initial == null) return;
+    _title.text = initial.title;
+    _note.text = initial.note ?? '';
+    _scheduled = initial.scheduledAt;
+    _category = initial.category;
+    _imagePath = initial.imagePath;
+    _repeatRule = initial.repeatRule;
+
+    final musicAsset = initial.musicAsset;
+    if (musicAsset == null || musicAsset.isEmpty) return;
+
+    final builtIn = ReminderRingtones.all
+        .where((r) => r.assetPath == musicAsset)
+        .toList();
+    if (builtIn.isNotEmpty) {
+      _soundSource = _SoundSource.builtIn;
+      _ringtoneId = builtIn.first.id;
+      return;
+    }
+
+    _soundSource = _SoundSource.file;
+    _customMusicPath = musicAsset;
   }
 
   void _loadFolderTracks() {
@@ -113,6 +144,14 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
   }
 
   Future<void> _previewSound() async {
+    if (_soundSource != _SoundSource.builtIn) {
+      final allowed = await ReminderAudioPermissions.ensureForCustomSound();
+      if (!allowed && mounted) {
+        _showSnack('Allow audio access to preview your selected ringtone.');
+        return;
+      }
+    }
+
     await _previewPlayer.setReleaseMode(ReleaseMode.release);
     final ok = await ReminderSoundPlayer.tryPlay(
       _previewPlayer,
@@ -122,7 +161,7 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
       _showSnack(
         kIsWeb
             ? 'Could not preview this sound in the browser. Try on the mobile app.'
-            : 'Could not play this sound.',
+            : 'Could not play this sound. Check permissions and file access.',
       );
     }
   }
@@ -130,6 +169,11 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
   Future<void> _pickMusicFolder() async {
     if (kIsWeb) {
       _showSnack('Folder pick works on desktop and mobile apps. Use “Pick audio file” on web.');
+      return;
+    }
+    final allowed = await ReminderAudioPermissions.ensureForCustomSound();
+    if (!allowed) {
+      _showSnack('Allow audio access to use music from your folder.');
       return;
     }
     final path = await _ringtones.pickMusicFolder();
@@ -148,6 +192,13 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
   }
 
   Future<void> _pickSingleAudio() async {
+    if (!kIsWeb) {
+      final allowed = await ReminderAudioPermissions.ensureForCustomSound();
+      if (!allowed) {
+        _showSnack('Allow audio access to pick a custom ringtone.');
+        return;
+      }
+    }
     final path = await _ringtones.pickSingleAudioFile();
     if (path == null || path.isEmpty) return;
     setState(() {
@@ -161,7 +212,7 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (_title.text.trim().isEmpty) {
       _showSnack('Title is required');
       return;
@@ -172,8 +223,15 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
       return;
     }
 
+    if (!kIsWeb) {
+      await ReminderAudioPermissions.ensureBackgroundAlarmsReady();
+      if (_soundSource != _SoundSource.builtIn) {
+        await ReminderAudioPermissions.ensureForCustomSound();
+      }
+    }
+
     final reminder = ReminderEntity(
-      id: '',
+      id: widget.initialReminder?.id ?? '',
       title: _title.text.trim(),
       scheduledAt: _scheduled,
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),
@@ -181,7 +239,9 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
       musicAsset: _resolvedMusicAsset,
       category: _category,
       repeatRule: _repeatRule,
+      isCompleted: widget.initialReminder?.isCompleted ?? false,
     );
+    if (!mounted) return;
     context.read<ReminderBloc>().add(ReminderSaveRequested(reminder));
   }
 
@@ -191,13 +251,21 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
       listenWhen: (prev, curr) =>
           prev.saveSucceeded != curr.saveSucceeded && curr.saveSucceeded,
       listener: (context, state) {
-        _showSnack('Reminder saved & alarm scheduled');
+        if (state.permissionWarning != null) {
+          _showSnack(state.permissionWarning!);
+        } else {
+          _showSnack(
+            _isEditMode
+                ? 'Reminder updated & alarm rescheduled'
+                : 'Reminder saved & alarm scheduled',
+          );
+        }
         context.pop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffold,
         appBar: AppBar(
-          title: const Text('Create Reminder'),
+          title: Text(_isEditMode ? 'Edit Reminder' : 'Create Reminder'),
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
@@ -474,7 +542,7 @@ class _ReminderCreateScreenState extends State<ReminderCreateScreen> {
                   ],
                   const SizedBox(height: 28),
                   GlowButton(
-                    label: 'Save Reminder',
+                    label: _isEditMode ? 'Update Reminder' : 'Save Reminder',
                     isLoading: state.isSaving,
                     onPressed: state.isSaving ? null : _save,
                   ),

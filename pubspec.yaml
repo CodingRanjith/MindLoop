@@ -29,6 +29,8 @@ dependencies:
   flutter_timezone: ^4.1.0
   path: ^1.9.1
   file_selector: ^1.1.0
+  permission_handler: ^12.0.1
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -41,3 +43,11 @@ flutter:
     - assets/images/
     - assets/animations/
     - assets/sounds/
+    - assets/sounds/chime.wav
+    - assets/sounds/chime.ogg
+    - assets/sounds/soft_bell.wav
+    - assets/sounds/soft_bell.ogg
+    - assets/sounds/alert.wav
+    - assets/sounds/alert.ogg
+    - assets/sounds/gentle_pulse.wav
+    - assets/sounds/gentle_pulse.ogg

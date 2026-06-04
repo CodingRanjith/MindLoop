@@ -1,4 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mindloop/core/constants/currency_options.dart';
+import 'package:mindloop/core/di/injection.dart';
+import 'package:mindloop/core/utils/currency_preferences.dart';
+import 'package:mindloop/core/utils/reminder_audio_permissions.dart';
+import 'package:mindloop/services/notification_service.dart';
 import 'package:mindloop/widgets/app_list_rows.dart';
 import 'package:mindloop/widgets/dynamic_background.dart';
 import 'package:mindloop/widgets/glass_card.dart';
@@ -14,6 +20,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifications = true;
   bool _haptics = true;
   bool _dynamicTheme = true;
+  late String _currencyCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _currencyCode = CurrencyPreferences.selectedOption.code;
+  }
+
+  Future<void> _pickCurrency() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: CurrencyOptions.all.map((option) {
+              return RadioListTile<String>(
+                value: option.code,
+                groupValue: _currencyCode,
+                onChanged: (value) => Navigator.pop(context, value),
+                title: Text('${option.label} (${option.symbol})'),
+                subtitle: Text(option.code),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted || selected == _currencyCode) return;
+    await CurrencyPreferences.setSelectedCode(selected);
+    if (!mounted) return;
+    setState(() => _currencyCode = selected);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Currency updated')),
+    );
+  }
+
+  Future<void> _fixAlarmPermissions() async {
+    if (kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alarms work on the mobile app.')),
+      );
+      return;
+    }
+    final ready = await sl<NotificationService>().requestPermissions();
+    if (!mounted) return;
+    if (ready) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alarm permissions look good.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enable Notifications, Alarms & reminders, and turn off battery restrictions for MindLoop.',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      await ReminderAudioPermissions.openSystemSettings();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +114,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (v) => setState(() => _dynamicTheme = v),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassCard(
+                animate: false,
+                child: AppNavRow(
+                  title: 'Alarm permissions',
+                  subtitle: 'Notifications, exact alarms, battery',
+                  icon: Icons.alarm_rounded,
+                  onTap: _fixAlarmPermissions,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassCard(
+                animate: false,
+                child: AppNavRow(
+                  title: 'Currency',
+                  subtitle:
+                      '${CurrencyOptions.byCode(_currencyCode).label} (${CurrencyOptions.byCode(_currencyCode).symbol})',
+                  icon: Icons.currency_exchange_rounded,
+                  onTap: _pickCurrency,
                 ),
               ),
               const SizedBox(height: 16),

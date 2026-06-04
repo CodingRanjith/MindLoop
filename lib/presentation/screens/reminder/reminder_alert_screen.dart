@@ -2,7 +2,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mindloop/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:mindloop/core/constants/reminder_categories.dart';
 import 'package:mindloop/core/utils/local_file_image.dart';
 import 'package:mindloop/core/utils/reminder_sound_player.dart';
@@ -121,9 +123,15 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
+                            onPressed: () async {
                               HapticFeedback.lightImpact();
-                              _player.stop();
+                              await _player.stop();
+                              if (!context.mounted) return;
+                              if (r.id != 'demo') {
+                                context.read<ReminderBloc>().add(
+                                      ReminderSnoozeRequested(r.id),
+                                    );
+                              }
                               context.pop();
                             },
                             child: const Text('Snooze 5m'),
@@ -135,9 +143,15 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.neonPurple,
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               HapticFeedback.mediumImpact();
-                              _player.stop();
+                              await _player.stop();
+                              if (!context.mounted) return;
+                              if (r.id != 'demo') {
+                                context.read<ReminderBloc>().add(
+                                      ReminderDismissRequested(r.id),
+                                    );
+                              }
                               context.pop();
                             },
                             child: const Text('Dismiss'),

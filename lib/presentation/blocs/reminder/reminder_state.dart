@@ -9,6 +9,7 @@ class ReminderState extends Equatable {
     this.isSaving = false,
     this.saveSucceeded = false,
     this.error,
+    this.permissionWarning,
   });
 
   final List<ReminderEntity> reminders;
@@ -18,6 +19,7 @@ class ReminderState extends Equatable {
   final bool isSaving;
   final bool saveSucceeded;
   final String? error;
+  final String? permissionWarning;
 
   ReminderState copyWith({
     List<ReminderEntity>? reminders,
@@ -27,7 +29,9 @@ class ReminderState extends Equatable {
     bool? isSaving,
     bool? saveSucceeded,
     String? error,
+    String? permissionWarning,
     bool clearError = false,
+    bool clearPermissionWarning = false,
   }) {
     return ReminderState(
       reminders: reminders ?? this.reminders,
@@ -37,6 +41,9 @@ class ReminderState extends Equatable {
       isSaving: isSaving ?? this.isSaving,
       saveSucceeded: saveSucceeded ?? this.saveSucceeded,
       error: clearError ? null : (error ?? this.error),
+      permissionWarning: clearPermissionWarning
+          ? null
+          : (permissionWarning ?? this.permissionWarning),
     );
   }
 
@@ -49,5 +56,6 @@ class ReminderState extends Equatable {
         isSaving,
         saveSucceeded,
         error,
+        permissionWarning,
       ];
 }

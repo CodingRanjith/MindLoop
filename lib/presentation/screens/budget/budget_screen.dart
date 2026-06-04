@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:mindloop/core/utils/currency_preferences.dart';
 import 'package:mindloop/domain/entities/budget_transaction_entity.dart';
 import 'package:mindloop/presentation/blocs/budget/budget_bloc.dart';
 import 'package:mindloop/themes/app_colors.dart';
@@ -14,7 +15,7 @@ class BudgetScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BudgetBloc>().state;
-    final fmt = NumberFormat.currency(symbol: '\$');
+    final fmt = CurrencyPreferences.formatter(decimalDigits: 0);
     final spentRatio = state.totalIncome > 0
         ? (state.totalExpense / state.totalIncome).clamp(0.0, 1.0)
         : 0.0;

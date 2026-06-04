@@ -8,6 +8,7 @@ import 'package:mindloop/presentation/screens/auth/login_screen.dart';
 import 'package:mindloop/presentation/screens/auth/signup_screen.dart';
 import 'package:mindloop/presentation/screens/budget/budget_screen.dart';
 import 'package:mindloop/presentation/screens/calendar/calendar_screen.dart';
+import 'package:mindloop/presentation/screens/calculator/calculator_screen.dart';
 import 'package:mindloop/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:mindloop/presentation/screens/future/future_features_screen.dart';
 import 'package:mindloop/presentation/screens/home/home_shell.dart';
@@ -64,7 +65,12 @@ class AppRouter {
         ),
         GoRoute(
           path: '/reminder/create',
-          builder: (_, __) => const ReminderCreateScreen(),
+          builder: (_, state) {
+            final extra = state.extra;
+            return ReminderCreateScreen(
+              initialReminder: extra is ReminderEntity ? extra : null,
+            );
+          },
         ),
         GoRoute(
           path: '/reminder/:id',
@@ -76,6 +82,7 @@ class AppRouter {
         GoRoute(path: '/analytics', builder: (_, __) => const AnalyticsScreen()),
         GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
         GoRoute(path: '/future', builder: (_, __) => const FutureFeaturesScreen()),
+        GoRoute(path: '/calculator', builder: (_, __) => const CalculatorScreen()),
         GoRoute(
           path: '/alert',
           builder: (context, state) {

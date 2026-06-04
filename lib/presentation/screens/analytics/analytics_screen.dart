@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mindloop/core/utils/currency_preferences.dart';
 import 'package:mindloop/presentation/blocs/budget/budget_bloc.dart';
 import 'package:mindloop/themes/app_colors.dart';
 import 'package:mindloop/widgets/dynamic_background.dart';
@@ -12,6 +13,7 @@ class AnalyticsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final budget = context.watch<BudgetBloc>().state;
+    final fmt = CurrencyPreferences.formatter(decimalDigits: 0);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Analytics')),
@@ -69,7 +71,7 @@ class AnalyticsScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '\$${budget.balance.toStringAsFixed(0)}',
+                              fmt.format(budget.balance),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 18,
@@ -98,8 +100,8 @@ class AnalyticsScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         budget.balance >= 0
-                            ? 'You saved \$${budget.balance.toStringAsFixed(0)} this period.'
-                            : 'Spending exceeds income by \$${(-budget.balance).toStringAsFixed(0)}.',
+                            ? 'You saved ${fmt.format(budget.balance)} this period.'
+                            : 'Spending exceeds income by ${fmt.format(-budget.balance)}.',
                         style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     ],

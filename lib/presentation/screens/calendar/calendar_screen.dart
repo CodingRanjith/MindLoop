@@ -353,17 +353,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ? _buildDayListSliver(dayReminders, timeFmt)
                   : _buildAgendaSliver(monthReminders, timeFmt),
             ),
-            SliverToBoxAdapter(
-              child: _BottomSummaryBar(
-                count: _view == _CalendarView.month
-                    ? dayReminders.length
-                    : monthReminders.length,
-                label: _view == _CalendarView.month
-                    ? DateFormat.MMMd().format(selected)
-                    : monthFmt.format(_focused),
-                onAdd: () => context.push('/reminder/create'),
-              ),
-            ),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
@@ -584,77 +573,119 @@ class _ReminderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = CalendarUiColors.categoryAccent(reminder.category);
+    final progress = _progressValue(reminder);
+    final daysLeft = reminder.scheduledAt
+        .difference(DateTime.now())
+        .inDays
+        .clamp(0, 999);
+
     return Material(
       color: CalendarUiColors.surface,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       elevation: 0,
       shadowColor: CalendarUiColors.shadow,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             color: CalendarUiColors.surface,
             boxShadow: const [
               BoxShadow(
                 color: CalendarUiColors.shadow,
-                blurRadius: 12,
-                offset: Offset(0, 4),
+                blurRadius: 16,
+                offset: Offset(0, 6),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    reminder.category.icon,
-                    color: accent,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        reminder.title,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        reminder.category.label,
                         style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: CalendarUiColors.textPrimary,
-                          decoration: reminder.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
+                          fontSize: 11,
+                          color: accent,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$time · ${reminder.category.label}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: CalendarUiColors.textSecondary,
-                        ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: CalendarUiColors.textPrimary,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 4,
+                        backgroundColor: CalendarUiColors.progressTrack,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  reminder.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: CalendarUiColors.textPrimary,
+                    decoration: reminder.isCompleted ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                Icon(
-                  reminder.isCompleted
-                      ? Icons.check_circle_rounded
-                      : Icons.chevron_right_rounded,
-                  color: reminder.isCompleted
-                      ? CalendarUiColors.progressFill
-                      : CalendarUiColors.textMuted,
+                const SizedBox(height: 2),
+                Text(
+                  '$time · ${DateFormat('hh:mm a').format(reminder.scheduledAt.add(const Duration(hours: 1)))}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: CalendarUiColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _MiniCluster(accent: accent),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: CalendarUiColors.progressTrack,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${daysLeft + 1} Day${daysLeft + 1 == 1 ? '' : 's'} Left',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -663,88 +694,48 @@ class _ReminderRow extends StatelessWidget {
       ),
     );
   }
+
+  double _progressValue(ReminderEntity item) {
+    if (item.isCompleted) return 1;
+    final base = item.id.codeUnits.fold<int>(0, (p, c) => p + c);
+    return 0.18 + ((base % 62) / 100);
+  }
 }
 
-class _BottomSummaryBar extends StatelessWidget {
-  const _BottomSummaryBar({
-    required this.count,
-    required this.label,
-    required this.onAdd,
-  });
+class _MiniCluster extends StatelessWidget {
+  const _MiniCluster({required this.accent});
 
-  final int count;
-  final String label;
-  final VoidCallback onAdd;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
-        decoration: BoxDecoration(
-          color: CalendarUiColors.selectedDay,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(28),
-            bottom: Radius.circular(28),
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: CalendarUiColors.shadow,
-              blurRadius: 24,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    count == 0
-                        ? 'No reminders'
-                        : '$count reminder${count == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 17,
-                    ),
-                  ),
-                ],
+    return SizedBox(
+      width: 74,
+      height: 26,
+      child: Stack(
+        children: List.generate(3, (index) {
+          final fill = index.isEven
+              ? accent.withValues(alpha: 0.85)
+              : CalendarUiColors.selectedDay.withValues(alpha: 0.75);
+          return Positioned(
+            left: index * 18,
+            child: Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: fill,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Icon(
+                index == 1 ? Icons.star_rounded : Icons.person_rounded,
+                size: 12,
+                color: Colors.white,
               ),
             ),
-            FilledButton(
-              onPressed: onAdd,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: CalendarUiColors.textPrimary,
-                minimumSize: const Size(0, 44),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-              child: const Text(
-                'Add reminder',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }

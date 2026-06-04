@@ -26,3 +26,21 @@ class ReminderDeleteRequested extends ReminderEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class ReminderSnoozeRequested extends ReminderEvent {
+  const ReminderSnoozeRequested(this.id, {this.duration = const Duration(minutes: 5)});
+  final String id;
+  final Duration duration;
+
+  @override
+  List<Object?> get props => [id, duration];
+}
+
+class ReminderDismissRequested extends ReminderEvent {
+  const ReminderDismissRequested(this.id, {this.markComplete = false});
+  final String id;
+  final bool markComplete;
+
+  @override
+  List<Object?> get props => [id, markComplete];
+}
