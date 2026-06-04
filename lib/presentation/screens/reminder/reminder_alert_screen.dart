@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:mindloop/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:mindloop/core/constants/reminder_categories.dart';
 import 'package:mindloop/core/utils/local_file_image.dart';
@@ -11,6 +14,7 @@ import 'package:mindloop/core/utils/reminder_sound_player.dart';
 import 'package:mindloop/domain/entities/reminder_entity.dart';
 import 'package:mindloop/themes/app_colors.dart';
 import 'package:mindloop/widgets/dynamic_background.dart';
+import 'package:mindloop/widgets/rigging_alarm_background.dart';
 
 class ReminderAlertScreen extends StatefulWidget {
   const ReminderAlertScreen({super.key, required this.reminder});
@@ -49,6 +53,34 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
     }
   }
 
+  Future<void> _stopSound() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _snooze(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    await _stopSound();
+    if (!context.mounted) return;
+    final r = widget.reminder;
+    if (r.id != 'demo') {
+      context.read<ReminderBloc>().add(ReminderSnoozeRequested(r.id));
+    }
+    context.pop();
+  }
+
+  Future<void> _dismiss(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    await _stopSound();
+    if (!context.mounted) return;
+    final r = widget.reminder;
+    if (r.id != 'demo') {
+      context.read<ReminderBloc>().add(ReminderDismissRequested(r.id));
+    }
+    context.pop();
+  }
+
   @override
   void dispose() {
     _player.dispose();
@@ -59,6 +91,183 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
   Widget build(BuildContext context) {
     final r = widget.reminder;
     final hasImage = LocalFileImage.canShowFile(r.imagePath);
+
+    if (hasImage) {
+      return _RiggingAlarmImageScreen(
+        imagePath: r.imagePath!,
+        onSnooze: () => _snooze(context),
+        onDismiss: () => _dismiss(context),
+      );
+    }
+
+    return _ClassicReminderAlert(
+      reminder: r,
+      onSnooze: () => _snooze(context),
+      onDismiss: () => _dismiss(context),
+    );
+  }
+}
+
+class _RiggingAlarmImageScreen extends StatefulWidget {
+  const _RiggingAlarmImageScreen({
+    required this.imagePath,
+    required this.onSnooze,
+    required this.onDismiss,
+  });
+
+  final String imagePath;
+  final VoidCallback onSnooze;
+  final VoidCallback onDismiss;
+
+  @override
+  State<_RiggingAlarmImageScreen> createState() => _RiggingAlarmImageScreenState();
+}
+
+class _RiggingAlarmImageScreenState extends State<_RiggingAlarmImageScreen> {
+  late DateTime _now;
+  Timer? _clockTimer;
+  final _timeFmt = DateFormat.jm();
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity > 420) {
+      widget.onDismiss();
+    } else if (velocity < -420) {
+      widget.onSnooze();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final top = media.padding.top;
+    final bottom = media.padding.bottom;
+    final bodyHeight = media.size.height - top - bottom;
+    const headerHeight = 52.0;
+    final imageHeight = (bodyHeight - headerHeight) * 0.90;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF081018),
+      body: RiggingAlarmBackground(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onVerticalDragEnd: _onVerticalDragEnd,
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: _RiggingAlarmHeader(timeLabel: _timeFmt.format(_now)),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      height: imageHeight,
+                      width: double.infinity,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: LocalFileImage(
+                          path: widget.imagePath,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: bottom + 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RiggingAlarmHeader extends StatelessWidget {
+  const _RiggingAlarmHeader({required this.timeLabel});
+
+  final String timeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF22D3EE).withValues(alpha: 0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Text(
+                'Rigging Alarm',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                  color: Color(0xFFE2E8F0),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                timeLabel,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.08, end: 0);
+  }
+}
+
+class _ClassicReminderAlert extends StatelessWidget {
+  const _ClassicReminderAlert({
+    required this.reminder,
+    required this.onSnooze,
+    required this.onDismiss,
+  });
+
+  final ReminderEntity reminder;
+  final VoidCallback onSnooze;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = reminder;
 
     return Scaffold(
       body: DynamicBackground(
@@ -105,35 +314,12 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
                           ),
                         ),
                       ).animate().fadeIn(delay: 200.ms),
-                    if (hasImage)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: LocalFileImage(
-                          path: r.imagePath!,
-                          height: 220,
-                          width: 220,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ).animate().fadeIn(delay: 300.ms).scale(
-                            begin: const Offset(0.92, 0.92),
-                            end: const Offset(1, 1),
-                          ),
                     const SizedBox(height: 24),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () async {
-                              HapticFeedback.lightImpact();
-                              await _player.stop();
-                              if (!context.mounted) return;
-                              if (r.id != 'demo') {
-                                context.read<ReminderBloc>().add(
-                                      ReminderSnoozeRequested(r.id),
-                                    );
-                              }
-                              context.pop();
-                            },
+                            onPressed: onSnooze,
                             child: const Text('Snooze 5m'),
                           ),
                         ),
@@ -143,17 +329,7 @@ class _ReminderAlertScreenState extends State<ReminderAlertScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.neonPurple,
                             ),
-                            onPressed: () async {
-                              HapticFeedback.mediumImpact();
-                              await _player.stop();
-                              if (!context.mounted) return;
-                              if (r.id != 'demo') {
-                                context.read<ReminderBloc>().add(
-                                      ReminderDismissRequested(r.id),
-                                    );
-                              }
-                              context.pop();
-                            },
+                            onPressed: onDismiss,
                             child: const Text('Dismiss'),
                           ),
                         ),

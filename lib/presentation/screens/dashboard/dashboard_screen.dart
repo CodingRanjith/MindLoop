@@ -43,65 +43,40 @@ class _ModuleCardMetrics {
   final double footerSize;
 
   factory _ModuleCardMetrics.fromContext(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
+    final media = MediaQuery.of(context);
+    final width = media.size.width;
+    final height = media.size.height;
+    final viewPadding = media.padding;
+    final usableHeight =
+        height - viewPadding.top - viewPadding.bottom;
 
-    if (width < 340) {
-      return const _ModuleCardMetrics(
-        aspectRatio: 1.48,
-        gridSpacing: 5,
-        padding: 7,
-        radius: 10,
-        iconBox: 20,
-        iconSize: 13,
-        arrowBox: 14,
-        arrowSize: 9,
-        titleSize: 11,
-        subtitleSize: 8.5,
-        footerSize: 9,
-      );
-    }
-    if (width < 400) {
-      return const _ModuleCardMetrics(
-        aspectRatio: 1.38,
-        gridSpacing: 6,
-        padding: 8,
-        radius: 12,
-        iconBox: 22,
-        iconSize: 14,
-        arrowBox: 16,
-        arrowSize: 10,
-        titleSize: 12,
-        subtitleSize: 9,
-        footerSize: 10,
-      );
-    }
-    if (width < 600) {
-      return const _ModuleCardMetrics(
-        aspectRatio: 1.28,
-        gridSpacing: 8,
-        padding: 10,
-        radius: 14,
-        iconBox: 26,
-        iconSize: 16,
-        arrowBox: 18,
-        arrowSize: 11,
-        titleSize: 13,
-        subtitleSize: 10,
-        footerSize: 11,
-      );
-    }
-    return const _ModuleCardMetrics(
-      aspectRatio: 1.18,
-      gridSpacing: 10,
-      padding: 12,
-      radius: 16,
-      iconBox: 30,
-      iconSize: 18,
-      arrowBox: 20,
-      arrowSize: 12,
-      titleSize: 14,
-      subtitleSize: 11,
-      footerSize: 12,
+    final gridSpacing = width < 360 ? 10.0 : width < 420 ? 12.0 : 14.0;
+    const horizontalInset = 32.0;
+    final cellWidth = (width - horizontalInset - gridSpacing) / 2;
+
+    // Header, greeting card, section title, bottom nav + FAB notch.
+    const fixedChrome = 300.0;
+    const bottomNavReserve = 96.0;
+    final gridAreaHeight = (usableHeight - fixedChrome - bottomNavReserve)
+        .clamp(280.0, usableHeight * 0.58);
+    final cellHeight = (gridAreaHeight - gridSpacing) / 2;
+    final aspectRatio = (cellWidth / cellHeight).clamp(0.62, 0.95);
+
+    final textScale = media.textScaler.scale(1).clamp(1.0, 1.35);
+    final scale = (cellHeight / 128).clamp(1.0, 1.45) * textScale;
+
+    return _ModuleCardMetrics(
+      aspectRatio: aspectRatio,
+      gridSpacing: gridSpacing,
+      padding: 10 * scale,
+      radius: 14 * scale,
+      iconBox: 28 * scale,
+      iconSize: 16 * scale,
+      arrowBox: 22 * scale,
+      arrowSize: 12 * scale,
+      titleSize: 13 * scale,
+      subtitleSize: 10.5 * scale,
+      footerSize: 11 * scale,
     );
   }
 }
