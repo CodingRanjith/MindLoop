@@ -14,6 +14,7 @@ import 'package:mindloop/core/utils/reminder_audio_permissions.dart';
 
 import 'package:mindloop/core/utils/reminder_sound_player.dart';
 
+import 'package:mindloop/core/constants/expense_reminder_constants.dart';
 import 'package:mindloop/domain/entities/reminder_entity.dart';
 
 import 'package:mindloop/services/reminder_notification_sound.dart';
@@ -25,6 +26,8 @@ import 'package:timezone/timezone.dart' as tz;
 
 
 typedef ReminderAlertHandler = Future<void> Function(String reminderId);
+
+typedef ExpenseReminderAlertHandler = Future<void> Function(String? payload);
 
 
 
@@ -50,6 +53,8 @@ class NotificationService {
 
   static ReminderAlertHandler? _backgroundHandler;
 
+  static ExpenseReminderAlertHandler? _backgroundExpenseHandler;
+
 
 
   final FlutterLocalNotificationsPlugin _plugin =
@@ -66,15 +71,23 @@ class NotificationService {
 
   ReminderAlertHandler? onReminderAlert;
 
+  ExpenseReminderAlertHandler? onExpenseReminderAlert;
+
 
 
   static void handleBackgroundTap(String? payload) {
 
-    final id = payload;
+    if (payload == null || payload.isEmpty) return;
 
-    if (id == null || id.isEmpty) return;
+    if (ExpenseReminderConstants.isExpensePayload(payload)) {
 
-    _backgroundHandler?.call(id);
+      _backgroundExpenseHandler?.call(payload);
+
+      return;
+
+    }
+
+    _backgroundHandler?.call(payload);
 
   }
 
@@ -140,6 +153,8 @@ class NotificationService {
 
     _backgroundHandler = onReminderAlert;
 
+    _backgroundExpenseHandler = onExpenseReminderAlert;
+
 
 
     if (kIsWeb) {
@@ -196,6 +211,8 @@ class NotificationService {
 
     await _ensureAndroidChannel();
 
+    await _ensureExpenseChannel();
+
     await requestPermissions();
 
     _initialized = true;
@@ -248,11 +265,19 @@ class NotificationService {
 
   Future<void> _onNotificationResponse(NotificationResponse response) async {
 
-    final id = response.payload;
+    final payload = response.payload;
 
-    if (id == null || id.isEmpty) return;
+    if (payload == null || payload.isEmpty) return;
 
-    await onReminderAlert?.call(id);
+    if (ExpenseReminderConstants.isExpensePayload(payload)) {
+
+      await onExpenseReminderAlert?.call(payload);
+
+      return;
+
+    }
+
+    await onReminderAlert?.call(payload);
 
   }
 
@@ -539,6 +564,184 @@ class NotificationService {
       }
 
     });
+
+  }
+
+
+
+  Future<void> _ensureExpenseChannel() async {
+
+    if (!Platform.isAndroid) return;
+
+    final android = _plugin.resolvePlatformSpecificImplementation<
+
+        AndroidFlutterLocalNotificationsPlugin>();
+
+    await android?.createNotificationChannel(
+
+      const AndroidNotificationChannel(
+
+        ExpenseReminderConstants.channelId,
+
+        ExpenseReminderConstants.channelName,
+
+        description: 'Daily expense tracking habit reminders',
+
+        importance: Importance.max,
+
+        playSound: true,
+
+        enableVibration: true,
+
+      ),
+
+    );
+
+  }
+
+
+
+  Future<void> scheduleExpenseReminder({
+
+    required DateTime scheduledAt,
+
+    required bool daily,
+
+    required bool weekly,
+
+    required String title,
+
+    required String body,
+
+    required String payload,
+
+    int notificationId = ExpenseReminderConstants.mainNotificationId,
+
+  }) async {
+
+    if (!_initialized) await init();
+
+    if (kIsWeb) return;
+
+
+
+    await _ensureExpenseChannel();
+
+
+
+    final tzScheduled = toTzLocal(scheduledAt);
+
+    DateTimeComponents? match;
+
+    if (daily) {
+
+      match = DateTimeComponents.time;
+
+    } else if (weekly) {
+
+      match = DateTimeComponents.dayOfWeekAndTime;
+
+    }
+
+
+
+    var scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
+
+    if (Platform.isAndroid) {
+
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+
+          AndroidFlutterLocalNotificationsPlugin>();
+
+      final canExact = await androidPlugin?.canScheduleExactNotifications();
+
+      if (canExact == false) {
+
+        scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
+
+      }
+
+    }
+
+
+
+    const androidDetails = AndroidNotificationDetails(
+
+      ExpenseReminderConstants.channelId,
+
+      ExpenseReminderConstants.channelName,
+
+      channelDescription: 'Daily expense tracking habit reminders',
+
+      importance: Importance.max,
+
+      priority: Priority.max,
+
+      playSound: true,
+
+      enableVibration: true,
+
+      fullScreenIntent: true,
+
+      category: AndroidNotificationCategory.reminder,
+
+      visibility: NotificationVisibility.public,
+
+      ticker: 'Expense reminder',
+
+      autoCancel: true,
+
+    );
+
+
+
+    await _plugin.zonedSchedule(
+
+      notificationId,
+
+      title,
+
+      body,
+
+      tzScheduled,
+
+      const NotificationDetails(
+
+        android: androidDetails,
+
+        iOS: DarwinNotificationDetails(
+
+          presentAlert: true,
+
+          presentSound: true,
+
+          presentBadge: true,
+
+          interruptionLevel: InterruptionLevel.timeSensitive,
+
+        ),
+
+      ),
+
+      androidScheduleMode: scheduleMode,
+
+      matchDateTimeComponents: match,
+
+      payload: payload,
+
+    );
+
+  }
+
+
+
+  Future<void> cancelExpenseReminders() async {
+
+    if (kIsWeb) return;
+
+    await _plugin.cancel(ExpenseReminderConstants.mainNotificationId);
+
+    await _plugin.cancel(ExpenseReminderConstants.snoozeNotificationId);
 
   }
 
