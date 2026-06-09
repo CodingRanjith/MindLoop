@@ -34,14 +34,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: BlocConsumer<AuthBloc, AuthState>(
-              listener: (context, state) {
-                if (state.errorMessage != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.errorMessage!)),
-                  );
-                }
-              },
+            child: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
                 return GlassCard(
                   animate: false,

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mindloop/core/utils/user_friendly_errors.dart';
 import 'package:mindloop/domain/repositories/auth_repository.dart';
 
 part 'auth_event.dart';
@@ -45,7 +46,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         isLoading: false,
       ));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      emit(state.copyWith(
+        isLoading: false,
+        errorMessage: UserFriendlyErrors.format(e),
+      ));
     }
   }
 
@@ -64,7 +68,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         isLoading: false,
       ));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      emit(state.copyWith(
+        isLoading: false,
+        errorMessage: UserFriendlyErrors.format(e),
+      ));
     }
   }
 
