@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mindloop/core/constants/currency_options.dart';
 import 'package:mindloop/core/di/injection.dart';
 import 'package:mindloop/core/utils/currency_preferences.dart';
@@ -7,6 +8,7 @@ import 'package:mindloop/core/utils/reminder_audio_permissions.dart';
 import 'package:mindloop/services/notification_service.dart';
 import 'package:mindloop/widgets/app_list_rows.dart';
 import 'package:mindloop/widgets/dynamic_background.dart';
+import 'package:mindloop/presentation/screens/settings/expense_reminder_settings_section.dart';
 import 'package:mindloop/widgets/glass_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -117,6 +119,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              const ExpenseReminderSettingsSection(),
+              const SizedBox(height: 16),
               GlassCard(
                 animate: false,
                 child: AppNavRow(
@@ -148,6 +152,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              GlassCard(
+                animate: false,
+                child: AppNavRow(
+                  title: 'Privacy Policy',
+                  subtitle: 'How MindLoop handles your data',
+                  icon: Icons.privacy_tip_outlined,
+                  onTap: () => context.push('/privacy'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              GlassCard(
+                animate: false,
+                child: AppNavRow(
+                  title: 'Terms of Service',
+                  subtitle: 'Usage guidelines',
+                  icon: Icons.description_outlined,
+                  onTap: () => context.push('/terms'),
+                ),
+              ),
+              const SizedBox(height: 8),
               GlassCard(
                 animate: false,
                 child: const AppNavRow(
