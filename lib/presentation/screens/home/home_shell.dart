@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mindloop/core/utils/app_responsive.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mindloop/presentation/screens/pfm/pfm_add_sheets.dart';
 import 'package:mindloop/themes/app_colors.dart';
 
 class HomeShell extends StatefulWidget {
@@ -15,7 +17,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _getIndex(String location) {
     if (location.startsWith('/calendar')) return 1;
-    if (location.startsWith('/budget')) return 2;
+    if (location.startsWith('/finance') || location.startsWith('/budget')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
   }
@@ -28,7 +30,7 @@ class _HomeShellState extends State<HomeShell> {
       case 1:
         context.go('/calendar');
       case 2:
-        context.go('/budget');
+        context.go('/finance/dashboard');
       case 3:
         context.go('/profile');
     }
@@ -36,7 +38,9 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final index = _getIndex(GoRouterState.of(context).uri.toString());
+    final location = GoRouterState.of(context).uri.toString();
+    final index = _getIndex(location);
+    final onFinance = location.startsWith('/finance') || location.startsWith('/budget');
 
     return PopScope(
       canPop: false,
@@ -50,39 +54,44 @@ class _HomeShellState extends State<HomeShell> {
         final shouldExit = await _showExitDialog(context);
         if (!context.mounted) return;
         if (shouldExit == true) {
-          Navigator.of(context).pop();
+          SystemNavigator.pop();
         }
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffold,
         extendBody: true,
-        body: widget.child,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            HapticFeedback.mediumImpact();
-            context.push('/reminder/create');
-          },
-          elevation: 2,
-          highlightElevation: 4,
-          child: const Icon(Icons.add, size: 26),
-        ),
+        body: ResponsiveContent(child: widget.child),
+        floatingActionButton: onFinance
+            ? const PfmQuickAddFab()
+            : FloatingActionButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  context.push('/reminder/create');
+                },
+                backgroundColor: AppColors.primary,
+                elevation: 2,
+                highlightElevation: 4,
+                child: const Icon(Icons.add, size: 26),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.border)),
-          ),
-          child: BottomAppBar(
-            color: Colors.transparent,
-            elevation: 0,
-            height: 72,
-            notchMargin: 8,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            shape: const CircularNotchedRectangle(),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: BottomAppBar(
+              color: Colors.transparent,
+              elevation: 0,
+              height: 60,
+              notchMargin: 6,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              shape: const CircularNotchedRectangle(),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
                 _NavItem(
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
@@ -101,7 +110,7 @@ class _HomeShellState extends State<HomeShell> {
                 _NavItem(
                   icon: Icons.pie_chart_outline_rounded,
                   activeIcon: Icons.pie_chart_rounded,
-                  label: 'Budget',
+                  label: 'Finance',
                   selected: index == 2,
                   onTap: () => _onTap(2),
                 ),
@@ -112,7 +121,8 @@ class _HomeShellState extends State<HomeShell> {
                   selected: index == 3,
                   onTap: () => _onTap(3),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -165,26 +175,25 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(selected ? activeIcon : icon, color: color, size: 22),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 10,
-                  height: 1.1,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: color,
-                ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(selected ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
