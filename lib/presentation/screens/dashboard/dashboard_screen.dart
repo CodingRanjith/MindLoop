@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mindloop/core/constants/reminder_categories.dart';
+import 'package:mindloop/core/di/injection.dart';
+import 'package:mindloop/core/utils/calculator_usage_tracker.dart';
 import 'package:mindloop/core/utils/currency_preferences.dart';
 import 'package:mindloop/domain/entities/reminder_entity.dart';
 import 'package:mindloop/presentation/blocs/auth/auth_bloc.dart';
@@ -13,7 +15,7 @@ import 'package:mindloop/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:mindloop/themes/app_colors.dart';
 import 'package:mindloop/widgets/coming_soon_card.dart';
 
-enum _HubModule { hub, reminders, expenses, future }
+enum _HubModule { hub, reminders, future }
 
 class _ModuleCardMetrics {
   const _ModuleCardMetrics({
@@ -90,10 +92,20 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   _HubModule _module = _HubModule.hub;
+  String _calculatorFooter = 'Quick math';
+  String _futureFooter = 'Coming soon';
 
   @override
   void initState() {
     super.initState();
+    _refreshHubFooters();
+  }
+
+  void _refreshHubFooters() {
+    setState(() {
+      _calculatorFooter = CalculatorUsageTracker.footerLabel(sl());
+      _futureFooter = 'Coming soon';
+    });
   }
 
   @override
@@ -180,7 +192,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return switch (module) {
       _HubModule.hub => 'Home',
       _HubModule.reminders => 'Reminders',
-      _HubModule.expenses => 'Expense Manager',
       _HubModule.future => 'Future Works',
     };
   }
@@ -198,19 +209,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           todayCount: reminders.todayReminders.length,
           balance: budget.balance,
           upcomingCount: reminders.upcomingReminders.length,
+          calculatorFooter: _calculatorFooter,
+          futureFooter: _futureFooter,
           onOpenReminders: () => _openModule(_HubModule.reminders),
-          onOpenExpenses: () => _openModule(_HubModule.expenses),
+          onOpenFinance: () => context.go('/finance/dashboard'),
           onOpenFuture: () => _openModule(_HubModule.future),
-          onOpenCalculator: () => context.push('/calculator'),
+          onOpenCalculator: () async {
+            await context.push('/calculator');
+            if (mounted) _refreshHubFooters();
+          },
         ),
       _HubModule.reminders => _RemindersModuleView(
           reminders: reminders,
           timeFmt: timeFmt,
           onSeeAll: () => context.go('/calendar'),
-        ),
-      _HubModule.expenses => _ExpensesModuleView(
-          budget: budget,
-          onOpenFull: () => context.go('/budget'),
         ),
       _HubModule.future => const _FutureModuleView(),
     };
@@ -438,8 +450,10 @@ class _HubView extends StatelessWidget {
     required this.todayCount,
     required this.balance,
     required this.upcomingCount,
+    required this.calculatorFooter,
+    required this.futureFooter,
     required this.onOpenReminders,
-    required this.onOpenExpenses,
+    required this.onOpenFinance,
     required this.onOpenFuture,
     required this.onOpenCalculator,
   });
@@ -447,10 +461,12 @@ class _HubView extends StatelessWidget {
   final int todayCount;
   final double balance;
   final int upcomingCount;
+  final String calculatorFooter;
+  final String futureFooter;
   final VoidCallback onOpenReminders;
-  final VoidCallback onOpenExpenses;
+  final VoidCallback onOpenFinance;
   final VoidCallback onOpenFuture;
-  final VoidCallback onOpenCalculator;
+  final Future<void> Function() onOpenCalculator;
 
   @override
   Widget build(BuildContext context) {
@@ -524,13 +540,13 @@ class _HubView extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              onTap: onOpenExpenses,
+              onTap: onOpenFinance,
             ),
             _PremiumModuleCard(
               metrics: metrics,
               title: 'Future Works',
               subtitle: 'Roadmap and new features',
-              footerLeft: '60% complete',
+              footerLeft: futureFooter,
               footerColor: const Color(0xFFF252A3),
               icon: Icons.rocket_launch_rounded,
               gradient: const LinearGradient(
@@ -544,7 +560,7 @@ class _HubView extends StatelessWidget {
               metrics: metrics,
               title: 'Calculator',
               subtitle: 'Quick calculations',
-              footerLeft: '12 calculations',
+              footerLeft: calculatorFooter,
               footerColor: AppColors.expense,
               icon: Icons.calculate_rounded,
               gradient: const LinearGradient(
@@ -552,7 +568,7 @@ class _HubView extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              onTap: onOpenCalculator,
+              onTap: () => onOpenCalculator(),
             ),
           ],
         ).animate().fadeIn(duration: 380.ms),
@@ -1070,7 +1086,7 @@ class _QuickActionDock extends StatelessWidget {
             ).animate(slide),
             opacity: slide,
             visible: isOpen,
-            onTap: () => context.go('/budget'),
+            onTap: () => context.go('/finance/dashboard'),
           ),
           _FloatingQuickAction(
             icon: Icons.task_alt_rounded,
@@ -1903,157 +1919,6 @@ class _ReminderStatChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ExpensesModuleView extends StatelessWidget {
-  const _ExpensesModuleView({
-    required this.budget,
-    required this.onOpenFull,
-  });
-
-  final BudgetState budget;
-  final VoidCallback onOpenFull;
-
-  @override
-  Widget build(BuildContext context) {
-    final fmt = CurrencyPreferences.formatter(decimalDigits: 0);
-    final spentRatio = budget.totalIncome > 0
-        ? (budget.totalExpense / budget.totalIncome).clamp(0.0, 1.0)
-        : 0.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ExpenseSummaryCard(budget: budget, fmt: fmt),
-        const SizedBox(height: 24),
-        _ProGroupedList(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _InlineStat(label: 'Income', value: fmt.format(budget.totalIncome)),
-                      _InlineStat(label: 'Expense', value: fmt.format(budget.totalExpense)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: spentRatio,
-                      minHeight: 6,
-                      backgroundColor: AppColors.surfaceMuted,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${(spentRatio * 100).toStringAsFixed(0)}% of income used',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: onOpenFull,
-            child: const Text('Open full budget'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExpenseSummaryCard extends StatelessWidget {
-  const _ExpenseSummaryCard({required this.budget, required this.fmt});
-
-  final BudgetState budget;
-  final NumberFormat fmt;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-      decoration: BoxDecoration(
-        color: AppColors.primaryDark,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x260A2A3C),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Net balance',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textOnPrimary.withValues(alpha: 0.72),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            fmt.format(budget.balance),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textOnPrimary,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: Color(0x33FFFFFF)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _HeroMetric(label: 'Income', value: fmt.format(budget.totalIncome)),
-              _HeroMetric(label: 'Spent', value: fmt.format(budget.totalExpense)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InlineStat extends StatelessWidget {
-  const _InlineStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
     );
   }
 }
