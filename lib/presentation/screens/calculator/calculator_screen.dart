@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mindloop/core/di/injection.dart';
+import 'package:mindloop/core/utils/calculator_usage_tracker.dart';
 import 'package:mindloop/themes/app_colors.dart';
 
 class CalculatorScreen extends StatefulWidget {
@@ -47,6 +49,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _applyEqual() {
     HapticFeedback.mediumImpact();
+    if (_operator != null) {
+      CalculatorUsageTracker.recordCalculation(sl());
+    }
     final rhs = double.tryParse(_output) ?? 0;
     final result = switch (_operator) {
       '+' => _accumulator + rhs,
