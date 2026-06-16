@@ -149,13 +149,17 @@ class PfmAddSheets {
     var category = defaultCategory ??
         (type == TransactionType.income
             ? PfmCategories.incomeLabels[IncomeSource.salary]!
-            : 'Grocery');
+            : 'Food');
     var payment = existing?.paymentMethod ?? PaymentMethod.upi;
     var incomeSource = existing?.incomeSource ?? IncomeSource.salary;
+    var txDate = existing?.date ?? DateTime.now();
 
+    final pfmState = context.read<PfmBloc>().state;
     final categories = type == TransactionType.income
         ? PfmCategories.incomeCategoryList
-        : PfmCategories.expenseCategoryList;
+        : PfmCategories.allExpenseCategoryNames(
+            pfmState.expenseCategories.where((c) => !c.isDefault).toList(),
+          );
 
     showModalBottomSheet<void>(
       context: context,
@@ -164,7 +168,9 @@ class PfmAddSheets {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) {
           return PfmFormSheet(
-            title: type == TransactionType.income ? 'Add Income' : 'Add Expense',
+            title: existing != null
+                ? (type == TransactionType.income ? 'Edit Income' : 'Edit Expense')
+                : (type == TransactionType.income ? 'Add Income' : 'Add Expense'),
             primaryLabel: 'Save',
             onPrimary: () {
               final amount = double.tryParse(amountCtrl.text) ?? 0;
@@ -176,7 +182,7 @@ class PfmAddSheets {
                         title: titleCtrl.text.trim(),
                         amount: amount,
                         type: type,
-                        date: existing?.date ?? DateTime.now(),
+                        date: txDate,
                         category: category,
                         notes: notesCtrl.text.trim(),
                         paymentMethod: payment,
@@ -186,6 +192,35 @@ class PfmAddSheets {
                   );
               Navigator.pop(ctx);
             },
+            secondaryLabel: existing != null ? 'Delete' : null,
+            onSecondary: existing != null
+                ? () async {
+                    final ok = await showDialog<bool>(
+                      context: ctx,
+                      builder: (dCtx) => AlertDialog(
+                        title: const Text('Delete transaction?'),
+                        content: const Text('This cannot be undone.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dCtx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(dCtx, true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: PfmTheme.expense),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true && ctx.mounted) {
+                      context.read<PfmBloc>().add(PfmTransactionDeleteRequested(existing.id));
+                      Navigator.pop(ctx);
+                    }
+                  }
+                : null,
             children: [
               PfmFormTextField(
                 label: 'Title',
@@ -232,6 +267,46 @@ class PfmAddSheets {
                     )
                     .toList(),
                 onChanged: (v) => setState(() => payment = v ?? payment),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: PfmFormFields.fieldGap),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Date', style: PfmFormFields.labelStyle),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: txDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) setState(() => txDate = picked);
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: InputDecorator(
+                        decoration: PfmFormFields.decoration(hint: 'Select date'),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${txDate.day}/${txDate.month}/${txDate.year}',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: PfmTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.calendar_today_outlined, size: 20, color: PfmTheme.textSecondary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               PfmFormTextField(
                 label: 'Notes',

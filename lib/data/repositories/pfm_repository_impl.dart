@@ -8,6 +8,7 @@ import 'package:mindloop/domain/entities/budget_transaction_entity.dart';
 import 'package:mindloop/domain/entities/financial_goal_entity.dart';
 import 'package:mindloop/domain/entities/loan_entity.dart';
 import 'package:mindloop/domain/entities/net_worth_item_entity.dart';
+import 'package:mindloop/domain/entities/expense_category_entity.dart';
 import 'package:mindloop/domain/entities/recurring_transaction_entity.dart';
 import 'package:mindloop/domain/repositories/pfm_repository.dart';
 
@@ -18,6 +19,7 @@ class PfmRepositoryImpl implements PfmRepository {
   Box<Map>? _netWorthBox;
   Box<Map>? _recurringBox;
   Box? _settingsBox;
+  Box<Map>? _categoriesBox;
 
   Future<Box<Map>> get _transactions async {
     _txBox ??= await Hive.openBox<Map>(AppConstants.hiveBudgetBox);
@@ -47,6 +49,11 @@ class PfmRepositoryImpl implements PfmRepository {
   Future<Box> get _settings async {
     _settingsBox ??= await Hive.openBox(AppConstants.hivePfmSettingsBox);
     return _settingsBox!;
+  }
+
+  Future<Box<Map>> get _categories async {
+    _categoriesBox ??= await Hive.openBox<Map>(AppConstants.hivePfmCategoriesBox);
+    return _categoriesBox!;
   }
 
   @override
@@ -186,6 +193,12 @@ class PfmRepositoryImpl implements PfmRepository {
       'netWorth': (await getNetWorthItems()).map(_netWorthToJson).toList(),
       'recurring': (await getRecurring()).map(_recurringToJson).toList(),
       'budgetRule': (await getBudgetRule()).name,
+      'monthlyBudget': await getMonthlyBudget(),
+      'weeklyBudget': await getWeeklyBudget(),
+      'customCategories': (await getExpenseCategories())
+          .where((c) => !c.isDefault)
+          .map(_categoryToJson)
+          .toList(),
     };
     return jsonEncode(data);
   }
@@ -231,7 +244,80 @@ class PfmRepositoryImpl implements PfmRepository {
       );
       await setBudgetRule(rule);
     }
+    final monthly = data['monthlyBudget'];
+    if (monthly is num) await setMonthlyBudget(monthly.toDouble());
+    final weekly = data['weeklyBudget'];
+    if (weekly is num) await setWeeklyBudget(weekly.toDouble());
+    final catBox = await _categories;
+    await catBox.clear();
+    for (final item in data['customCategories'] as List<dynamic>? ?? []) {
+      final cat = _categoryFromJson(Map<String, dynamic>.from(item as Map));
+      await catBox.put(cat.id, _categoryToJson(cat));
+    }
   }
+
+  @override
+  Future<List<ExpenseCategoryEntity>> getExpenseCategories() async {
+    final b = await _categories;
+    final custom = b.values
+        .map((e) => _categoryFromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return [...PfmCategories.defaultExpenseCategories, ...custom];
+  }
+
+  @override
+  Future<void> saveExpenseCategory(ExpenseCategoryEntity category) async {
+    if (category.isDefault) return;
+    final b = await _categories;
+    await b.put(category.id, _categoryToJson(category));
+  }
+
+  @override
+  Future<void> deleteExpenseCategory(String id) async {
+    final b = await _categories;
+    await b.delete(id);
+  }
+
+  @override
+  Future<double> getMonthlyBudget() async {
+    final b = await _settings;
+    return (b.get('monthlyBudget') as num?)?.toDouble() ?? 0;
+  }
+
+  @override
+  Future<double> getWeeklyBudget() async {
+    final b = await _settings;
+    return (b.get('weeklyBudget') as num?)?.toDouble() ?? 0;
+  }
+
+  @override
+  Future<void> setMonthlyBudget(double amount) async {
+    final b = await _settings;
+    await b.put('monthlyBudget', amount);
+  }
+
+  @override
+  Future<void> setWeeklyBudget(double amount) async {
+    final b = await _settings;
+    await b.put('weeklyBudget', amount);
+  }
+
+  static Map<String, dynamic> _categoryToJson(ExpenseCategoryEntity c) => {
+        'id': c.id,
+        'name': c.name,
+        'icon': c.icon,
+        'color': c.color,
+        'isDefault': c.isDefault,
+      };
+
+  static ExpenseCategoryEntity _categoryFromJson(Map<String, dynamic> json) =>
+      ExpenseCategoryEntity(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        icon: json['icon'] as String? ?? 'more',
+        color: json['color'] as int? ?? 0xFF6B7280,
+        isDefault: json['isDefault'] as bool? ?? false,
+      );
 
   static Map<String, dynamic> _goalToJson(FinancialGoalEntity g) => {
         'id': g.id,

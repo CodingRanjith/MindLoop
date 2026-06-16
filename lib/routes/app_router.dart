@@ -5,6 +5,7 @@ import 'package:mindloop/presentation/blocs/auth/auth_bloc.dart';
 import 'package:mindloop/presentation/screens/analytics/analytics_screen.dart';
 import 'package:mindloop/presentation/screens/pfm/pfm_analytics_screen.dart';
 import 'package:mindloop/presentation/screens/pfm/pfm_budget_screen.dart';
+import 'package:mindloop/presentation/screens/pfm/pfm_categories_screen.dart';
 import 'package:mindloop/presentation/screens/pfm/pfm_dashboard_screen.dart';
 import 'package:mindloop/presentation/screens/pfm/pfm_export_screen.dart';
 import 'package:mindloop/presentation/screens/pfm/pfm_insights_screen.dart';
@@ -96,6 +97,7 @@ class AppRouter {
               builder: (_, __) => const PfmGoalsScreen(),
             ),
             GoRoute(path: '/finance/budget', builder: (_, __) => const PfmBudgetScreen()),
+            GoRoute(path: '/finance/categories', builder: (_, __) => const PfmCategoriesScreen()),
             GoRoute(path: '/finance/loans', builder: (_, __) => const PfmLoansScreen()),
             GoRoute(path: '/finance/net-worth', builder: (_, __) => const PfmNetWorthScreen()),
             GoRoute(path: '/finance/export', builder: (_, __) => const PfmExportScreen()),

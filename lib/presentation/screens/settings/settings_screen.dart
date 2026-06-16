@@ -8,7 +8,9 @@ import 'package:mindloop/core/utils/reminder_audio_permissions.dart';
 import 'package:mindloop/services/notification_service.dart';
 import 'package:mindloop/widgets/app_list_rows.dart';
 import 'package:mindloop/widgets/dynamic_background.dart';
+import 'package:mindloop/presentation/screens/settings/expense_data_settings_section.dart';
 import 'package:mindloop/presentation/screens/settings/expense_reminder_settings_section.dart';
+import 'package:mindloop/core/utils/theme_preferences.dart';
 import 'package:mindloop/widgets/glass_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -21,13 +23,16 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifications = true;
   bool _haptics = true;
-  bool _dynamicTheme = true;
+  bool _darkMode = false;
   late String _currencyCode;
 
   @override
   void initState() {
     super.initState();
     _currencyCode = CurrencyPreferences.selectedOption.code;
+    ThemePreferences.isDarkMode().then((dark) {
+      if (mounted) setState(() => _darkMode = dark);
+    });
   }
 
   Future<void> _pickCurrency() async {
@@ -111,13 +116,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (v) => setState(() => _haptics = v),
                     ),
                     AppSwitchRow(
-                      title: 'Dynamic Theme',
-                      value: _dynamicTheme,
-                      onChanged: (v) => setState(() => _dynamicTheme = v),
+                      title: 'Dark Mode',
+                      value: _darkMode,
+                      onChanged: (v) async {
+                        setState(() => _darkMode = v);
+                        await ThemePreferences.setThemeMode(
+                          v ? ThemeMode.dark : ThemeMode.light,
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              const ExpenseDataSettingsSection(),
               const SizedBox(height: 16),
               const ExpenseReminderSettingsSection(),
               const SizedBox(height: 16),

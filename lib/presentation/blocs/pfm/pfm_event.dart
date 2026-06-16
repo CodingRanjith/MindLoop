@@ -76,3 +76,35 @@ class PfmBudgetRuleChanged extends PfmEvent {
 class PfmProcessRecurringRequested extends PfmEvent {
   const PfmProcessRecurringRequested();
 }
+
+class PfmCategorySaveRequested extends PfmEvent {
+  const PfmCategorySaveRequested(this.category);
+  final ExpenseCategoryEntity category;
+  @override
+  List<Object?> get props => [category];
+}
+
+class PfmCategoryDeleteRequested extends PfmEvent {
+  const PfmCategoryDeleteRequested(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
+class PfmExpenseBudgetSetRequested extends PfmEvent {
+  const PfmExpenseBudgetSetRequested({
+    required this.period,
+    required this.amount,
+  });
+  final ExpenseBudgetPeriod period;
+  final double amount;
+  @override
+  List<Object?> get props => [period, amount];
+}
+
+class PfmBackupRestoreRequested extends PfmEvent {
+  const PfmBackupRestoreRequested(this.json);
+  final String json;
+  @override
+  List<Object?> get props => [json];
+}

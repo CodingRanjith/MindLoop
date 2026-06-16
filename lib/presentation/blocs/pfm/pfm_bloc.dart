@@ -5,9 +5,12 @@ import 'package:mindloop/domain/entities/budget_transaction_entity.dart';
 import 'package:mindloop/domain/entities/financial_goal_entity.dart';
 import 'package:mindloop/domain/entities/loan_entity.dart';
 import 'package:mindloop/domain/entities/net_worth_item_entity.dart';
+import 'package:mindloop/domain/entities/expense_budget_entity.dart';
+import 'package:mindloop/domain/entities/expense_category_entity.dart';
 import 'package:mindloop/domain/entities/pfm_dashboard_snapshot.dart';
 import 'package:mindloop/domain/entities/recurring_transaction_entity.dart';
 import 'package:mindloop/domain/repositories/pfm_repository.dart';
+import 'package:mindloop/services/expense_tracker_service.dart';
 import 'package:mindloop/services/finance_analytics_service.dart';
 import 'package:mindloop/services/finance_insights_service.dart';
 import 'package:uuid/uuid.dart';
@@ -20,8 +23,10 @@ class PfmBloc extends Bloc<PfmEvent, PfmState> {
     this._repository, {
     FinanceAnalyticsService? analytics,
     FinanceInsightsService? insights,
+    ExpenseTrackerService? expenseTracker,
   })  : _analytics = analytics ?? FinanceAnalyticsService(),
         _insights = insights ?? FinanceInsightsService(),
+        _expenseTracker = expenseTracker ?? ExpenseTrackerService(),
         super(const PfmState()) {
     on<PfmLoadRequested>(_onLoad);
     on<PfmTransactionSaveRequested>(_onSaveTransaction);
@@ -34,11 +39,16 @@ class PfmBloc extends Bloc<PfmEvent, PfmState> {
     on<PfmNetWorthSaveRequested>(_onSaveNetWorth);
     on<PfmBudgetRuleChanged>(_onBudgetRuleChanged);
     on<PfmProcessRecurringRequested>(_onProcessRecurring);
+    on<PfmCategorySaveRequested>(_onSaveCategory);
+    on<PfmCategoryDeleteRequested>(_onDeleteCategory);
+    on<PfmExpenseBudgetSetRequested>(_onSetExpenseBudget);
+    on<PfmBackupRestoreRequested>(_onRestoreBackup);
   }
 
   final PfmRepository _repository;
   final FinanceAnalyticsService _analytics;
   final FinanceInsightsService _insights;
+  final ExpenseTrackerService _expenseTracker;
   final _uuid = const Uuid();
 
   Future<void> _onLoad(PfmLoadRequested event, Emitter<PfmState> emit) async {
@@ -50,6 +60,21 @@ class PfmBloc extends Bloc<PfmEvent, PfmState> {
       final netWorth = await _repository.getNetWorthItems();
       final recurring = await _repository.getRecurring();
       final budgetRule = await _repository.getBudgetRule();
+      final categories = await _repository.getExpenseCategories();
+      final monthlyBudget = await _repository.getMonthlyBudget();
+      final weeklyBudget = await _repository.getWeeklyBudget();
+
+      final periodTotals = _expenseTracker.periodTotals(transactions);
+      final monthlyBudgetStatus = _expenseTracker.budgetStatus(
+        period: ExpenseBudgetPeriod.monthly,
+        budgetAmount: monthlyBudget,
+        transactions: transactions,
+      );
+      final weeklyBudgetStatus = _expenseTracker.budgetStatus(
+        period: ExpenseBudgetPeriod.weekly,
+        budgetAmount: weeklyBudget,
+        transactions: transactions,
+      );
 
       double totalIncome = 0;
       double totalExpense = 0;
@@ -87,6 +112,12 @@ class PfmBloc extends Bloc<PfmEvent, PfmState> {
         netWorthItems: netWorth,
         recurring: recurring,
         budgetRule: budgetRule,
+        expenseCategories: categories,
+        monthlyBudget: monthlyBudget,
+        weeklyBudget: weeklyBudget,
+        periodTotals: periodTotals,
+        monthlyBudgetStatus: monthlyBudgetStatus,
+        weeklyBudgetStatus: weeklyBudgetStatus,
         snapshot: snapshot,
         totalIncome: totalIncome,
         totalExpense: totalExpense,
@@ -196,5 +227,44 @@ class PfmBloc extends Bloc<PfmEvent, PfmState> {
       RecurrenceFrequency.monthly => DateTime(current.year, current.month + 1, current.day),
       RecurrenceFrequency.yearly => DateTime(current.year + 1, current.month, current.day),
     };
+  }
+
+  Future<void> _onSaveCategory(
+    PfmCategorySaveRequested event,
+    Emitter<PfmState> emit,
+  ) async {
+    final cat = event.category.copyWith(
+      id: event.category.id.isEmpty ? _uuid.v4() : event.category.id,
+    );
+    await _repository.saveExpenseCategory(cat);
+    add(const PfmLoadRequested());
+  }
+
+  Future<void> _onDeleteCategory(
+    PfmCategoryDeleteRequested event,
+    Emitter<PfmState> emit,
+  ) async {
+    await _repository.deleteExpenseCategory(event.id);
+    add(const PfmLoadRequested());
+  }
+
+  Future<void> _onSetExpenseBudget(
+    PfmExpenseBudgetSetRequested event,
+    Emitter<PfmState> emit,
+  ) async {
+    if (event.period == ExpenseBudgetPeriod.monthly) {
+      await _repository.setMonthlyBudget(event.amount);
+    } else {
+      await _repository.setWeeklyBudget(event.amount);
+    }
+    add(const PfmLoadRequested());
+  }
+
+  Future<void> _onRestoreBackup(
+    PfmBackupRestoreRequested event,
+    Emitter<PfmState> emit,
+  ) async {
+    await _repository.restoreBackupJson(event.json);
+    add(const PfmLoadRequested());
   }
 }

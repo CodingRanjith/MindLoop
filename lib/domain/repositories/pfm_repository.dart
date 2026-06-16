@@ -1,5 +1,6 @@
 import 'package:mindloop/core/constants/pfm_categories.dart';
 import 'package:mindloop/domain/entities/budget_transaction_entity.dart';
+import 'package:mindloop/domain/entities/expense_category_entity.dart';
 import 'package:mindloop/domain/entities/financial_goal_entity.dart';
 import 'package:mindloop/domain/entities/loan_entity.dart';
 import 'package:mindloop/domain/entities/net_worth_item_entity.dart';
@@ -32,4 +33,13 @@ abstract class PfmRepository {
 
   Future<String?> exportBackupJson();
   Future<void> restoreBackupJson(String json);
+
+  Future<List<ExpenseCategoryEntity>> getExpenseCategories();
+  Future<void> saveExpenseCategory(ExpenseCategoryEntity category);
+  Future<void> deleteExpenseCategory(String id);
+
+  Future<double> getMonthlyBudget();
+  Future<double> getWeeklyBudget();
+  Future<void> setMonthlyBudget(double amount);
+  Future<void> setWeeklyBudget(double amount);
 }

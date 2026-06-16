@@ -1,6 +1,8 @@
 /// Personal Finance Management — income sources, expense buckets, and metadata.
 library;
 
+import 'package:mindloop/domain/entities/expense_category_entity.dart';
+
 enum ExpenseBucket { needs, wants, savings, investment }
 
 enum IncomeSource {
@@ -47,7 +49,73 @@ class PfmCategories {
     IncomeSource.other: 'Other Income',
   };
 
+  /// Spec default expense categories (Food, Transport, Shopping, etc.).
+  static const List<ExpenseCategoryEntity> defaultExpenseCategories = [
+    ExpenseCategoryEntity(
+      id: 'food',
+      name: 'Food',
+      icon: 'food',
+      color: 0xFFEF4444,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'transport',
+      name: 'Transport',
+      icon: 'transport',
+      color: 0xFF3B82F6,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'shopping',
+      name: 'Shopping',
+      icon: 'shopping_bag',
+      color: 0xFF8B5CF6,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'bills',
+      name: 'Bills',
+      icon: 'bills',
+      color: 0xFFF59E0B,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'entertainment',
+      name: 'Entertainment',
+      icon: 'entertainment',
+      color: 0xFFEC4899,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'health',
+      name: 'Health',
+      icon: 'health',
+      color: 0xFF10B981,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'education',
+      name: 'Education',
+      icon: 'school',
+      color: 0xFF06B6D4,
+      isDefault: true,
+    ),
+    ExpenseCategoryEntity(
+      id: 'others',
+      name: 'Others',
+      icon: 'more',
+      color: 0xFF6B7280,
+      isDefault: true,
+    ),
+  ];
+
   static const Map<String, ExpenseBucket> expenseCategories = {
+    'Food': ExpenseBucket.needs,
+    'Transport': ExpenseBucket.needs,
+    'Bills': ExpenseBucket.needs,
+    'Health': ExpenseBucket.needs,
+    'Education': ExpenseBucket.needs,
+    'Others': ExpenseBucket.needs,
     'Rent': ExpenseBucket.needs,
     'EMI': ExpenseBucket.needs,
     'Electricity': ExpenseBucket.needs,
@@ -79,6 +147,33 @@ class PfmCategories {
   static List<String> get incomeCategoryList => incomeLabels.values.toList();
 
   static List<String> get expenseCategoryList => expenseCategories.keys.toList();
+
+  static List<String> allExpenseCategoryNames(List<ExpenseCategoryEntity> custom) {
+    final names = <String>{};
+    for (final c in defaultExpenseCategories) {
+      names.add(c.name);
+    }
+    for (final c in custom) {
+      names.add(c.name);
+    }
+    for (final name in expenseCategories.keys) {
+      names.add(name);
+    }
+    return names.toList()..sort();
+  }
+
+  static ExpenseCategoryEntity? categoryMeta(
+    String name,
+    List<ExpenseCategoryEntity> custom,
+  ) {
+    for (final c in defaultExpenseCategories) {
+      if (c.name == name) return c;
+    }
+    for (final c in custom) {
+      if (c.name == name) return c;
+    }
+    return null;
+  }
 
   static ExpenseBucket bucketFor(String category) =>
       expenseCategories[category] ?? ExpenseBucket.needs;

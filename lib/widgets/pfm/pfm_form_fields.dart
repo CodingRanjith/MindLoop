@@ -55,12 +55,16 @@ class PfmFormSheet extends StatelessWidget {
     required this.children,
     this.primaryLabel = 'Save',
     this.onPrimary,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
   final String title;
   final List<Widget> children;
   final String primaryLabel;
   final VoidCallback? onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +127,18 @@ class PfmFormSheet extends StatelessWidget {
                         style: PfmFormFields.primaryButtonStyle(),
                         onPressed: onPrimary,
                         child: Text(primaryLabel),
+                      ),
+                    ],
+                    if (onSecondary != null && secondaryLabel != null) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: onSecondary,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: PfmTheme.expense,
+                          side: const BorderSide(color: PfmTheme.expense),
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        child: Text(secondaryLabel!),
                       ),
                     ],
                     const SizedBox(height: 8),

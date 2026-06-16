@@ -8,6 +8,12 @@ class PfmState extends Equatable {
     this.netWorthItems = const [],
     this.recurring = const [],
     this.budgetRule = BudgetRuleType.custom,
+    this.expenseCategories = const [],
+    this.monthlyBudget = 0,
+    this.weeklyBudget = 0,
+    this.periodTotals = const ExpensePeriodTotals(today: 0, thisWeek: 0, thisMonth: 0),
+    this.monthlyBudgetStatus,
+    this.weeklyBudgetStatus,
     this.snapshot,
     this.totalIncome = 0,
     this.totalExpense = 0,
@@ -24,6 +30,12 @@ class PfmState extends Equatable {
   final List<NetWorthItemEntity> netWorthItems;
   final List<RecurringTransactionEntity> recurring;
   final BudgetRuleType budgetRule;
+  final List<ExpenseCategoryEntity> expenseCategories;
+  final double monthlyBudget;
+  final double weeklyBudget;
+  final ExpensePeriodTotals periodTotals;
+  final ExpenseBudgetStatus? monthlyBudgetStatus;
+  final ExpenseBudgetStatus? weeklyBudgetStatus;
   final PfmDashboardSnapshot? snapshot;
   final double totalIncome;
   final double totalExpense;
@@ -40,6 +52,14 @@ class PfmState extends Equatable {
     List<NetWorthItemEntity>? netWorthItems,
     List<RecurringTransactionEntity>? recurring,
     BudgetRuleType? budgetRule,
+    List<ExpenseCategoryEntity>? expenseCategories,
+    double? monthlyBudget,
+    double? weeklyBudget,
+    ExpensePeriodTotals? periodTotals,
+    ExpenseBudgetStatus? monthlyBudgetStatus,
+    ExpenseBudgetStatus? weeklyBudgetStatus,
+    bool clearMonthlyBudgetStatus = false,
+    bool clearWeeklyBudgetStatus = false,
     PfmDashboardSnapshot? snapshot,
     double? totalIncome,
     double? totalExpense,
@@ -57,6 +77,14 @@ class PfmState extends Equatable {
       netWorthItems: netWorthItems ?? this.netWorthItems,
       recurring: recurring ?? this.recurring,
       budgetRule: budgetRule ?? this.budgetRule,
+      expenseCategories: expenseCategories ?? this.expenseCategories,
+      monthlyBudget: monthlyBudget ?? this.monthlyBudget,
+      weeklyBudget: weeklyBudget ?? this.weeklyBudget,
+      periodTotals: periodTotals ?? this.periodTotals,
+      monthlyBudgetStatus:
+          clearMonthlyBudgetStatus ? null : (monthlyBudgetStatus ?? this.monthlyBudgetStatus),
+      weeklyBudgetStatus:
+          clearWeeklyBudgetStatus ? null : (weeklyBudgetStatus ?? this.weeklyBudgetStatus),
       snapshot: snapshot ?? this.snapshot,
       totalIncome: totalIncome ?? this.totalIncome,
       totalExpense: totalExpense ?? this.totalExpense,
@@ -73,6 +101,10 @@ class PfmState extends Equatable {
         transactions,
         goals,
         loans,
+        expenseCategories,
+        monthlyBudget,
+        weeklyBudget,
+        periodTotals,
         snapshot,
         totalIncome,
         totalExpense,

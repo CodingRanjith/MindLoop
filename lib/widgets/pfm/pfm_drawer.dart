@@ -101,6 +101,12 @@ class PfmDrawer extends StatelessWidget {
                     current: location,
                   ),
                   _DrawerTile(
+                    icon: Icons.category_outlined,
+                    title: 'Categories',
+                    route: '/finance/categories',
+                    current: location,
+                  ),
+                  _DrawerTile(
                     icon: Icons.flag_outlined,
                     title: 'Goals',
                     route: '/finance/goals',

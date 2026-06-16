@@ -172,5 +172,39 @@ class AppTheme {
   }
 
   /// Kept for compatibility; prefer [lightTheme].
-  static ThemeData get darkTheme => lightTheme;
+  static ThemeData get darkTheme {
+    final base = ThemeData.dark(useMaterial3: true);
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
+      bodyColor: const Color(0xFFE5E7EB),
+      displayColor: const Color(0xFFF3F4F6),
+    );
+
+    return base.copyWith(
+      scaffoldBackgroundColor: const Color(0xFF0F1117),
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFA29BFE),
+        onPrimary: Color(0xFF1E1E2E),
+        secondary: Color(0xFF6C5CE7),
+        surface: Color(0xFF1A1D27),
+        onSurface: Color(0xFFE5E7EB),
+        outline: Color(0xFF374151),
+      ),
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Color(0xFFF3F4F6),
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1A1D27),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusCard),
+          side: const BorderSide(color: Color(0xFF374151)),
+        ),
+      ),
+    );
+  }
 }

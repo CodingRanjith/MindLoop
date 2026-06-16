@@ -19,6 +19,7 @@ import 'package:mindloop/services/reminder_alert_launcher.dart';
 import 'package:mindloop/services/reminder_alarm_coordinator.dart';
 import 'package:mindloop/services/reminder_due_watcher.dart';
 import 'package:mindloop/core/utils/app_responsive.dart';
+import 'package:mindloop/core/utils/theme_preferences.dart';
 import 'package:mindloop/themes/app_theme.dart';
 import 'package:mindloop/widgets/app_feedback.dart';
 import 'package:mindloop/widgets/keyboard_dismiss_scope.dart';
@@ -39,11 +40,14 @@ class _MindLoopAppState extends State<MindLoopApp> with WidgetsBindingObserver {
   late final ReminderAlertLauncher _alertLauncher;
   late final ExpenseReminderAlertLauncher _expenseAlertLauncher;
   late final ReminderDueWatcher _dueWatcher;
+  ThemeMode _themeMode = ThemeMode.light;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ThemePreferences.onChanged = _loadThemeMode;
+    unawaited(_loadThemeMode());
     _authBloc = sl<AuthBloc>()..add(AuthCheckRequested());
     _reminderBloc = sl<ReminderBloc>()..add(const RemindersLoadRequested());
     _pfmBloc = sl<PfmBloc>()
@@ -62,6 +66,11 @@ class _MindLoopAppState extends State<MindLoopApp> with WidgetsBindingObserver {
     );
     ReminderAlarmCoordinator.dueWatcher = _dueWatcher;
     unawaited(_wireNotifications());
+  }
+
+  Future<void> _loadThemeMode() async {
+    final mode = await ThemePreferences.getThemeMode();
+    if (mounted) setState(() => _themeMode = mode);
   }
 
   Future<void> _wireNotifications() async {
@@ -97,6 +106,7 @@ class _MindLoopAppState extends State<MindLoopApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ThemePreferences.onChanged = null;
     _dueWatcher.stop();
     _authBloc.close();
     _reminderBloc.close();
@@ -125,6 +135,8 @@ class _MindLoopAppState extends State<MindLoopApp> with WidgetsBindingObserver {
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _themeMode,
           routerConfig: _router,
           builder: (context, child) {
             final media = MediaQuery.of(context);
