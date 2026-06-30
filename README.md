@@ -151,33 +151,35 @@ Data flows inward: UI → BLoC → use cases → repositories → Firebase / loc
 
 ## Project structure
 
-Target layout under `lib/`:
+Module-wise **Clean Architecture** under `lib/`:
 
 ```text
 lib/
-├── core/
-├── config/
-├── data/
-├── domain/
-├── presentation/
-├── widgets/
-├── services/
-├── themes/
-├── utils/
-├── routes/
-└── main.dart
+├── main.dart
+├── app/                    # App shell, router, dependency injection
+├── core/                   # Cross-module constants, services, utils
+├── shared/                 # Shared theme & widgets
+└── modules/
+    ├── auth/
+    ├── reminder/
+    ├── finance/
+    ├── dashboard/
+    ├── home/
+    ├── settings/
+    ├── profile/
+    ├── onboarding/
+    ├── calculator/
+    ├── pomodoro/
+    ├── legal/
+    └── future/
 ```
 
-- **core** — constants, errors, extensions, base classes  
-- **config** — environment, feature flags  
-- **data** — implementations, Firestore, Hive, mappers  
-- **domain** — entities, repository contracts, use cases  
-- **presentation** — screens, BLoC, page-specific UI  
-- **widgets** — shared reusable components  
-- **services** — notifications, audio, auth helpers  
-- **themes** — colors, typography, theme modes  
-- **utils** — formatters, validators  
-- **routes** — named routes, `go_router` or equivalent  
+Each full module contains `data/`, `domain/`, `presentation/` (and optional `services/`, `core/`). See [lib/README.md](lib/README.md) for import conventions and per-module details.
+
+- **app** — `MindLoopApp`, `go_router`, GetIt DI  
+- **core** — app-wide constants, notification service, shared utils  
+- **shared** — theme, glass cards, dynamic backgrounds, generic widgets  
+- **modules/** — feature-owned blocs, repositories, screens, and module services  
 
 ---
 

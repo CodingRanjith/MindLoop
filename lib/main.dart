@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:mindloop/app.dart';
-import 'package:mindloop/core/di/injection.dart';
-import 'package:mindloop/core/utils/reminder_sound_player.dart';
+import 'package:mindloop/app/app.dart';
+import 'package:mindloop/app/di/injection.dart';
+import 'package:mindloop/modules/reminder/core/utils/reminder_sound_player.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
