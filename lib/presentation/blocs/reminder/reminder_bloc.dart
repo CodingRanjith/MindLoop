@@ -182,7 +182,7 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
 
     try {
 
-      final alarmsReady = await _notifications.requestPermissions();
+      final alarmsReady = await _notifications.checkPermissions();
 
       await _repository.saveReminder(reminder);
 

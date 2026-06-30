@@ -37,6 +37,22 @@ class ExpensePeriodTotals {
   final double thisMonth;
 }
 
+/// Income and expense totals for a selected time window.
+class PeriodMoneySummary {
+  const PeriodMoneySummary({
+    required this.income,
+    required this.expense,
+  });
+
+  final double income;
+  final double expense;
+
+  double get net => income - expense;
+  double get savingsRate => income > 0 ? ((income - expense) / income).clamp(0.0, 1.0) : 0;
+}
+
+enum FinancePeriod { today, week, month }
+
 class ExpenseTrackerService {
   DateTime startOfDay(DateTime date) => DateTime(date.year, date.month, date.day);
 
@@ -61,6 +77,36 @@ class ExpenseTrackerService {
             !t.date.isBefore(start) &&
             !t.date.isAfter(end))
         .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  double sumIncome(
+    List<BudgetTransactionEntity> transactions, {
+    required DateTime start,
+    required DateTime end,
+  }) {
+    return transactions
+        .where((t) =>
+            t.type == TransactionType.income &&
+            !t.date.isBefore(start) &&
+            !t.date.isAfter(end))
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  PeriodMoneySummary moneySummary(
+    List<BudgetTransactionEntity> transactions,
+    FinancePeriod period,
+  ) {
+    final now = DateTime.now();
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final start = switch (period) {
+      FinancePeriod.today => startOfDay(now),
+      FinancePeriod.week => startOfWeek(now),
+      FinancePeriod.month => startOfMonth(now),
+    };
+    return PeriodMoneySummary(
+      income: sumIncome(transactions, start: start, end: end),
+      expense: sumExpenses(transactions, start: start, end: end),
+    );
   }
 
   ExpensePeriodTotals periodTotals(List<BudgetTransactionEntity> transactions) {
@@ -152,5 +198,14 @@ class ExpenseTrackerService {
       transactions,
       const ExpenseFilter(sort: ExpenseSortOption.latest),
     ).take(limit).toList();
+  }
+
+  List<BudgetTransactionEntity> recentTransactions(
+    List<BudgetTransactionEntity> transactions, {
+    int limit = 5,
+  }) {
+    final list = [...transactions]
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return list.take(limit).toList();
   }
 }

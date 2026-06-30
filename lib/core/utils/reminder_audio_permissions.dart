@@ -23,48 +23,65 @@ class ReminderAudioPermissions {
     return storage.isGranted;
   }
 
-  static Future<bool> ensureNotifications() async {
+  static Future<bool> ensureNotifications({bool interactive = false}) async {
     if (kIsWeb) return true;
     if (!Platform.isAndroid) return true;
 
     final status = await Permission.notification.status;
     if (status.isGranted) return true;
+    if (!interactive) return false;
+
     final requested = await Permission.notification.request();
     return requested.isGranted;
   }
 
-  /// Notifications + exact alarm + battery optimization (background alarms).
+  /// Checks notification + exact-alarm readiness. Only shows system dialogs when
+  /// [interactive] is true (e.g. user tapped Settings → Alarm permissions).
   static Future<bool> ensureBackgroundAlarmsReady({
     FlutterLocalNotificationsPlugin? notificationsPlugin,
+    bool interactive = false,
   }) async {
     if (kIsWeb) return true;
     if (!Platform.isAndroid) return true;
 
-    await ensureNotifications();
-
-    final plugin = notificationsPlugin ??
-        FlutterLocalNotificationsPlugin();
+    final plugin = notificationsPlugin ?? FlutterLocalNotificationsPlugin();
     final android = plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    await android?.requestNotificationsPermission();
+
+    var notifOk = await Permission.notification.isGranted;
+    if (!notifOk && interactive) {
+      await android?.requestNotificationsPermission();
+      notifOk = await Permission.notification.isGranted;
+      if (!notifOk) {
+        final requested = await Permission.notification.request();
+        notifOk = requested.isGranted;
+      }
+    }
 
     var exactOk = await android?.canScheduleExactNotifications() ?? true;
-    if (!exactOk) {
+    if (!exactOk && interactive) {
       await android?.requestExactAlarmsPermission();
       exactOk = await android?.canScheduleExactNotifications() ?? false;
+      if (!exactOk) {
+        final schedule = await Permission.scheduleExactAlarm.request();
+        exactOk = schedule.isGranted;
+      }
     }
 
-    if (!exactOk) {
-      final schedule = await Permission.scheduleExactAlarm.request();
-      exactOk = schedule.isGranted;
+    // Battery optimization opens a heavy system screen — only when user asks.
+    if (interactive) {
+      final battery = await Permission.ignoreBatteryOptimizations.status;
+      if (!battery.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
     }
 
-    final battery = await Permission.ignoreBatteryOptimizations.status;
-    if (!battery.isGranted) {
-      await Permission.ignoreBatteryOptimizations.request();
+    if (!interactive) {
+      return notifOk && exactOk;
     }
 
-    return exactOk;
+    final batteryGranted = await Permission.ignoreBatteryOptimizations.isGranted;
+    return notifOk && exactOk && batteryGranted;
   }
 
   static Future<void> openSystemSettings() => openAppSettings();

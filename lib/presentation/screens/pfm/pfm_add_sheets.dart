@@ -19,6 +19,12 @@ class PfmQuickAddFab extends StatelessWidget {
   }
 
   void _showQuickAddMenu(BuildContext context) {
+    PfmAddSheets.showQuickAddMenu(context);
+  }
+}
+
+class PfmAddSheets {
+  static void showQuickAddMenu(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -74,7 +80,7 @@ class PfmQuickAddFab extends StatelessWidget {
                       color: PfmTheme.income,
                       onTap: () {
                         Navigator.pop(ctx);
-                        PfmAddSheets.showTransaction(context, TransactionType.income);
+                        showTransaction(context, TransactionType.income);
                       },
                     ),
                     PfmQuickAddTile(
@@ -83,7 +89,7 @@ class PfmQuickAddFab extends StatelessWidget {
                       color: PfmTheme.expense,
                       onTap: () {
                         Navigator.pop(ctx);
-                        PfmAddSheets.showTransaction(context, TransactionType.expense);
+                        showTransaction(context, TransactionType.expense);
                       },
                     ),
                     PfmQuickAddTile(
@@ -92,7 +98,7 @@ class PfmQuickAddFab extends StatelessWidget {
                       color: PfmTheme.primaryLight,
                       onTap: () {
                         Navigator.pop(ctx);
-                        PfmAddSheets.showGoal(context);
+                        showGoal(context);
                       },
                     ),
                     PfmQuickAddTile(
@@ -101,7 +107,7 @@ class PfmQuickAddFab extends StatelessWidget {
                       color: PfmTheme.primary,
                       onTap: () {
                         Navigator.pop(ctx);
-                        PfmAddSheets.showLoan(context);
+                        showLoan(context);
                       },
                     ),
                     PfmQuickAddTile(
@@ -110,7 +116,7 @@ class PfmQuickAddFab extends StatelessWidget {
                       color: PfmTheme.primaryDark,
                       onTap: () {
                         Navigator.pop(ctx);
-                        PfmAddSheets.showTransaction(
+                        showTransaction(
                           context,
                           TransactionType.expense,
                           defaultCategory: 'Stocks',
@@ -126,9 +132,7 @@ class PfmQuickAddFab extends StatelessWidget {
       ),
     );
   }
-}
 
-class PfmAddSheets {
   static String _paymentLabel(PaymentMethod method) {
     final n = method.name;
     if (n.length <= 3) return n.toUpperCase();

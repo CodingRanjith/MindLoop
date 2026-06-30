@@ -234,6 +234,7 @@ class PfmRecentExpensesList extends StatelessWidget {
     required this.transactions,
     required this.categories,
     required this.formatAmount,
+    this.title = 'Recent Transactions',
     this.onSeeAll,
     this.onTap,
   });
@@ -241,6 +242,7 @@ class PfmRecentExpensesList extends StatelessWidget {
   final List<BudgetTransactionEntity> transactions;
   final List<ExpenseCategoryEntity> categories;
   final String Function(double) formatAmount;
+  final String title;
   final VoidCallback? onSeeAll;
   final void Function(BudgetTransactionEntity)? onTap;
 
@@ -253,10 +255,10 @@ class PfmRecentExpensesList extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Recent Expenses',
-                style: TextStyle(
+                title,
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: PfmTheme.textPrimary,
@@ -269,9 +271,14 @@ class PfmRecentExpensesList extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         ...transactions.map((t) {
+          final isIncome = t.type == TransactionType.income;
           final meta = PfmCategories.categoryMeta(t.category, categories);
-          final color = meta?.colorValue ?? PfmTheme.primary;
-          final icon = meta?.iconData ?? Icons.receipt_rounded;
+          final color = isIncome
+              ? PfmTheme.income
+              : (meta?.colorValue ?? PfmTheme.primary);
+          final icon = isIncome
+              ? Icons.trending_up_rounded
+              : (meta?.iconData ?? Icons.receipt_rounded);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -318,10 +325,10 @@ class PfmRecentExpensesList extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '-${formatAmount(t.amount)}',
-                          style: const TextStyle(
+                          '${isIncome ? '+' : '-'}${formatAmount(t.amount)}',
+                          style: TextStyle(
                             fontWeight: FontWeight.w800,
-                            color: PfmTheme.expense,
+                            color: isIncome ? PfmTheme.income : PfmTheme.expense,
                             fontSize: 14,
                           ),
                         ),

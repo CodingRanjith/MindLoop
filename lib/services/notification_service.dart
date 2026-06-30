@@ -213,7 +213,10 @@ class NotificationService {
 
     await _ensureExpenseChannel();
 
-    await requestPermissions();
+    await ReminderAudioPermissions.ensureBackgroundAlarmsReady(
+      notificationsPlugin: _plugin,
+      interactive: false,
+    );
 
     _initialized = true;
 
@@ -288,11 +291,20 @@ class NotificationService {
     if (kIsWeb) return true;
 
     return ReminderAudioPermissions.ensureBackgroundAlarmsReady(
-
       notificationsPlugin: _plugin,
-
+      interactive: true,
     );
 
+  }
+
+  /// Silent check — never shows system permission dialogs.
+  Future<bool> checkPermissions() async {
+    if (kIsWeb) return true;
+
+    return ReminderAudioPermissions.ensureBackgroundAlarmsReady(
+      notificationsPlugin: _plugin,
+      interactive: false,
+    );
   }
 
 
